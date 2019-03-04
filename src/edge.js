@@ -49,6 +49,11 @@ class Edge {
     return this;
   }
 
+  with(transition: StateObject): Edge {
+    this.#withTransition = transition;
+    return this;
+  }
+
   getTransition(): TransitionObject {
     return this.#withTransition;
   }
