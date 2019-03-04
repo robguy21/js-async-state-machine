@@ -1,0 +1,11 @@
+{
+	"presets": [
+		["@babel/preset-env", {
+		  targets: {
+        browsers: ['ie >= 11']
+      },
+			"useBuiltIns": false
+		}],
+	],
+	"plugins": ["syntax-async-functions", "@babel/plugin-transform-flow-strip-types", "@babel/plugin-syntax-dynamic-import", "@babel/plugin-proposal-class-properties", "@babel/plugin-proposal-private-methods", "@babel/plugin-proposal-export-default-from", "@babel/plugin-transform-modules-commonjs"]
+}

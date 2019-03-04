@@ -1,0 +1,47 @@
+{
+  "name": "async-state-machine",
+  "version": "1.0.0",
+  "description": "An Asynchronous State Machine Implementation written in Javascript",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "./node_modules/.bin/babel-tape-runner",
+    "tests": "./node_modules/.bin/babel-tape-runner ./tests/*.spec.js",
+    "build": "yarn run clean && cross-env BABEL_ENV=es babel src --out-dir lib",
+    "clean": "rimraf lib"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/robguy21/js-async-state-machine.git"
+  },
+  "keywords": [
+    "js",
+    "state-machine",
+    "statemachine",
+    "async-state-machine",
+    "async"
+  ],
+  "author": "@robguy21",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/robguy21/js-async-state-machine/issues"
+  },
+  "homepage": "https://github.com/robguy21/js-async-state-machine#readme",
+  "dependencies": {
+    "@babel/cli": "^7.2.3",
+    "@babel/core": "^7.3.4",
+    "@babel/plugin-proposal-class-properties": "^7.3.4",
+    "@babel/plugin-proposal-export-default-from": "^7.2.0",
+    "@babel/plugin-proposal-private-methods": "^7.3.4",
+    "@babel/plugin-syntax-dynamic-import": "^7.2.0",
+    "@babel/plugin-transform-flow-strip-types": "^7.3.4",
+    "@babel/plugin-transform-modules-commonjs": "^7.2.0",
+    "@babel/preset-env": "^7.3.4",
+    "@babel/preset-flow": "^7.0.0",
+    "babel-plugin-syntax-async-functions": "^6.13.0",
+    "babel-tape-runner": "^3.0.0",
+    "cross-env": "^5.2.0",
+    "prettier": "^1.16.4",
+    "rimraf": "^2.6.3",
+    "tape-async": "^2.3.0"
+  }
+}
