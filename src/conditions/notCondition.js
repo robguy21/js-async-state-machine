@@ -1,3 +1,3 @@
-const notCondition = condition => !condition();
+const notCondition = condition => !condition;
 
 export default notCondition;

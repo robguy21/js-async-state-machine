@@ -1,4 +1,4 @@
 // not a single condition evaluates to false
-const andCondition = (...params) => !params.some(v => v() === false);
+const andCondition = conditions => conditions.every(v => v === true);
 
 export default andCondition;
