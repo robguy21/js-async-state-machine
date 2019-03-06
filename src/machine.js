@@ -42,7 +42,7 @@ class Machine {
     return this.customDataGetter();
   }
 
-  getEdgeFromTransition(transition): Edge {
+  getEdgeFromTransition(transition: TransitionObject): Edge {
     const edges = this.#edges.filter(edge =>
       edge.verifyEdge(transition.toString(), this.#state.toString()),
     );
@@ -65,12 +65,12 @@ class Machine {
   }
 
   /* Private Setters */
-  setState(nextState: string) {
+  setState(nextState: StateObject) {
     this.#state = nextState;
     return this;
   }
 
-  setNextState(nextState: string): Machine {
+  setNextState(nextState: StateObject): Machine {
     this.#nextState = nextState;
     return this;
   }
@@ -248,6 +248,11 @@ class Machine {
       available_transitions: this.getTransitions(),
       data: this.getData(params),
     };
+  }
+
+  reset() {
+    this.setState(null);
+    this.setNextState(null);
   }
 }
 
