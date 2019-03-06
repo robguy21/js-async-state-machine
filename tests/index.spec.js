@@ -17,7 +17,7 @@ const NuclearState = Object.create(State).setName('init_nuclear_mode');
 // Transition Declarations
 const switch_on = Object.create(Transition)
   .setName('switch_on')
-  .addCondition(context => context.getState() === 'off');
+  .addCondition(context => context.getState().toString() === 'off');
 
 const nuclear_transition = Object.create(Transition)
   .setName('init_nuclear_mode')
@@ -25,7 +25,7 @@ const nuclear_transition = Object.create(Transition)
 
 const switch_off = Object.create(Transition)
   .setName('switch_off')
-  .addCondition(context => context.getState() === 'on');
+  .addCondition(context => context.getState().toString() === 'on');
 
 const empty_transition = Object.create(Transition)
   .setName('empty')
@@ -57,7 +57,7 @@ test('Machine should have correct transition', t => {
   t.end();
 });
 
-test('Machine should transition', async t => {
+test('Machine should transition and then be null', async t => {
   const Microwave = new Machine()
     .registerEdge(
       Edge.new()
@@ -67,9 +67,11 @@ test('Machine should transition', async t => {
     )
     .setInitialState(OnState);
 
-  const sm = await Microwave.triggerTransition('switch_off');
+  let sm = await Microwave.triggerTransition('switch_off');
 
-  t.equals(sm.current_state, OffState.toString());
+  t.equals(sm.current_state.toString(), OffState.toString());
+  sm = Microwave.reset();
+  t.equals(sm.current_state, null);
   t.end();
 });
 
@@ -89,7 +91,7 @@ test('Machine should not transition', async t => {
     )
     .setInitialState(OffState);
   const sm = await Microwave.triggerTransition('switch_off');
-  t.equals(sm.current_state, OffState.toString());
+  t.equals(sm.current_state.toString(), OffState.toString());
   t.end();
 });
 
@@ -109,7 +111,7 @@ test('Machine should fail on condition', async t => {
     )
     .setInitialState(OnState);
   const sm = await Microwave.triggerTransition(nuclear_transition);
-  t.equals(sm.current_state, OnState.toString());
+  t.equals(sm.current_state.toString(), OnState.toString());
   t.end();
 });
 
@@ -117,7 +119,7 @@ test('Machine should set parameter with onEntry', async t => {
   const HeatOnState = Object.create(State)
     .setName('on')
     .setOnEntry(function(params) {
-      this.data.heat = params.heat;
+      this.setData({heat: params.heat});
     });
   const Microwave = new Machine()
     .registerEdge(
@@ -136,7 +138,7 @@ test('Machine should set parameter with onEntry', async t => {
     .setPayload({ heat: 'unset' });
 
   const sm = await Microwave.triggerTransition(switch_on, { heat: 'full' });
-  t.equals(sm.current_state, 'on');
+  t.equals(sm.current_state.toString(), 'on');
   t.equals(sm.data.heat, 'full');
   t.end();
 });
@@ -145,7 +147,7 @@ test('Machine should set parameter with onExit', async t => {
   const HeatOffState = Object.create(State)
     .setName('off')
     .setOnExit(function() {
-      this.data.heat = 'full';
+      this.setData({heat: 'full'});
       return null;
     });
 
@@ -163,11 +165,9 @@ test('Machine should set parameter with onExit', async t => {
         .transition(switch_off),
     )
     .setInitialState(HeatOffState);
-
-  console.log('yes');
   try {
     const sm = await Microwave.triggerTransition(switch_on);
-    t.equals(sm.current_state, 'on');
+    t.equals(sm.current_state.toString(), 'on');
     t.equals(sm.data.heat, 'full');
     t.end();
   } catch (e) {
@@ -181,14 +181,14 @@ test('Machine should trigger with many froms', async t => {
   const HeatOffState = Object.create(State)
     .setName('off')
     .setOnExit(function() {
-      this.data.heat = 'full';
+      this.setData({heat: 'full'});
       return null;
     });
 
   const SwitchedOffState = Object.create(State)
     .setName('switchedOff')
-    .setOnExit(function() {
-      this.data.heat = 'full';
+    .setOnExit(function(params) {
+      this.setData({heat: 'full'});
       return null;
     });
 
@@ -208,6 +208,8 @@ test('Machine should trigger with many froms', async t => {
     .setInitialState(HeatOffState);
 
   const sm = await Microwave.triggerTransition(force_on);
-  t.equals(sm.current_state, 'on');
+  t.equals(sm.current_state.toString(), 'on');
   t.end();
 });
+
+
