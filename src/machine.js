@@ -13,6 +13,8 @@ type ResponseShape = {
 class Machine {
   /* Private Fields */
   // eslint-disable-next-line
+  #initialState = null;
+  // eslint-disable-next-line
   #state = null;
   // eslint-disable-next-line
   #nextState = null;
@@ -92,17 +94,9 @@ class Machine {
   setInitialState(
     state: StateObject,
     startWithParams = {},
-    delayMachineStart: boolean = false,
   ): string {
-    // cannot set state if state is set.
-    if (this.#state !== null) return this.getState();
-
-    this.setState(state);
-
-    if (delayMachineStart) {
-      return this;
-    }
-    this.start(startWithParams);
+    if (this.#state !== null) return this;
+    this.#initialState = state;
     return this;
   }
 
@@ -222,7 +216,8 @@ class Machine {
   // eslint-disable-next-line
   start(params: void | any): ResponseShape {
     return new Promise(async (resolve, reject) => {
-      if (this.#state) {
+      if (this.#initialState) {
+        this.setState(this.#initialState);
         this.log(`Starting State Machine with ${this.#state.toString()}`);
         if (this.#state.onEntry) {
           this.log(
@@ -239,6 +234,7 @@ class Machine {
 
         resolve(this.response());
       } else {
+        this.log('Inital State not found');
         reject();
       }
     });
