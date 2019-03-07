@@ -56,13 +56,15 @@ class Machine {
 
   /* Public Getters */
   getTransitions(): string[] {
+    if (!this.#state) return [];
+
     return this.#edges
       .filter(edge => edge.canTransitionFrom(this.#state.toString()))
       .map(edge => edge.getTransition().toString());
   }
 
   getState(): StateObject {
-    return this.#state;
+    return this.#state.toString();
   }
 
   /* Private Setters */
@@ -91,10 +93,7 @@ class Machine {
     return this;
   }
 
-  setInitialState(
-    state: StateObject,
-    startWithParams = {},
-  ): string {
+  setInitialState(state: StateObject, startWithParams = {}): string {
     if (this.#state !== null) return this;
     this.#initialState = state;
     return this;
@@ -110,7 +109,7 @@ class Machine {
     }, true);
   }
 
-  callStateMethod(method, params) {
+  callStateMethod(method: Function, params: any): Promise<*> {
     // const parent = this;
     return new Promise((resolve, reject) => {
       const calling = method.call(this, params);
@@ -128,7 +127,7 @@ class Machine {
 
   // eslint-disable-next-line
   transition(edge: Edge, params: any): Machine {
-    return new Promise(async (resolve) => {
+    return new Promise(async (resolve, reject) => {
       // set next state
       this.log(`Setting Next State ::> ${edge.getTo().toString()}`);
       this.setNextState(edge.getTo());
@@ -140,23 +139,37 @@ class Machine {
       }
 
       // run [nextState].[onEntry]
-      if (edge.getTo().onEntry) {
-        this.log(`Firing 'onEntry' of ${edge.getTo().toString()}`);
-        await this.callStateMethod(edge.getTo().onEntry, params);
+      if (this.#nextState.onEntry) {
+        this.log(`Firing 'onEntry' of ${this.#nextState.toString()}`);
+        try {
+          await this.callStateMethod(this.#nextState.onEntry, params);
+        } catch (err) {
+          return reject(err);
+        }
       }
 
-      // finally, set the new state
+      // set the new state
       this.log(`Setting State ::> ${this.#nextState.toString()}`);
       const response = this.setState(this.#nextState);
 
-      if (
-        this.#state.toString() === this.#nextState.toString() &&
-        this.#state.onSuccess
-      ) {
-        this.log(`Firing on Success of ::> ${this.#nextState.toString()}`);
-        await this.callStateMethod(this.#state.onSuccess, params);
+      if (this.#state.toString() !== this.#nextState.toString()) {
+        // unable to transition
+        return reject('State Change Failed');
       }
-      resolve(response);
+
+      // reset next state
+      this.setNextState(null);
+
+      if (this.#state.onSuccess) {
+        this.log(`Firing on Success of ::> ${this.#state.toString()}`);
+        try {
+          await this.callStateMethod(this.#state.onSuccess, params);
+        } catch (err) {
+          return reject(err);
+        }
+      }
+
+      return resolve(response);
     });
   }
 
@@ -220,9 +233,7 @@ class Machine {
         this.setState(this.#initialState);
         this.log(`Starting State Machine with ${this.#state.toString()}`);
         if (this.#state.onEntry) {
-          this.log(
-            `Running State ::> ${this.#state.toString()} <:: 'onEntry'`,
-          );
+          this.log(`Running State ::> ${this.#state.toString()} <:: 'onEntry'`);
           await this.callStateMethod(this.#state.onEntry, params);
         }
         if (this.#state.onSuccess) {
@@ -231,27 +242,24 @@ class Machine {
           );
           await this.callStateMethod(this.#state.onSuccess, params);
         }
-
         resolve(this.response());
       } else {
-        this.log('Inital State not found');
-        reject();
+        reject('Inital State not found');
       }
     });
+  }
+
+  reset() {
+    this.setState(null);
+    return this.response();
   }
 
   response(params: any): ResponseShape {
     return {
       current_state: this.getState(),
-      available_transitions: this.#state ? this.getTransitions(): [],
+      available_transitions: this.getTransitions(),
       data: this.getData(),
     };
-  }
-
-  reset() {
-    this.setState(null);
-    this.setNextState(null);
-    return this.response();
   }
 }
 
