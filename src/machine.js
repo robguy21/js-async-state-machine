@@ -13,6 +13,8 @@ type ResponseShape = {
 class Machine {
   /* Private Fields */
   // eslint-disable-next-line
+  #initialState = null;
+  // eslint-disable-next-line
   #state = null;
   // eslint-disable-next-line
   #nextState = null;
@@ -20,6 +22,8 @@ class Machine {
   #edges = [];
   // eslint-disable-next-line
   #logger = false;
+  // eslint-disable-next-line
+  #data = {};
 
   /* Public Fields managed by ReduxMachine */
 
@@ -29,20 +33,17 @@ class Machine {
 
   constructor(enableLog: boolean = false) {
     this.customDataGetter = null;
-    this.data = {};
-
     this.#logger = enableLog;
   }
 
   /* Private Getters */
-  getData(): {} {
+  getData(): Object {
     // usage defined by calling method
-    if (!this.customDataGetter) return this.data;
-
+    if (!this.customDataGetter) return this.#data;
     return this.customDataGetter();
   }
 
-  getEdgeFromTransition(transition): Edge {
+  getEdgeFromTransition(transition: TransitionObject): Edge {
     const edges = this.#edges.filter(edge =>
       edge.verifyEdge(transition.toString(), this.#state.toString()),
     );
@@ -55,27 +56,34 @@ class Machine {
 
   /* Public Getters */
   getTransitions(): string[] {
+    if (!this.#state) return [];
+
     return this.#edges
       .filter(edge => edge.canTransitionFrom(this.#state.toString()))
       .map(edge => edge.getTransition().toString());
   }
 
-  getState(): string {
+  getState(): StateObject {
+    if (!this.#state) return null;
     return this.#state.toString();
   }
 
   /* Private Setters */
-  setState(nextState: string) {
+  setState(nextState: StateObject) {
     this.#state = nextState;
     return this;
   }
 
-  setNextState(nextState: string): Machine {
+  setNextState(nextState: StateObject): Machine {
     this.#nextState = nextState;
     return this;
   }
 
   /* Public Setters */
+  setData(data: Object = {}) {
+    this.#data = data;
+  }
+
   setPayload(payload: any): Machine {
     this.payload = payload;
     return this;
@@ -86,20 +94,9 @@ class Machine {
     return this;
   }
 
-  setInitialState(
-    state: StateObject,
-    startWithParams = {},
-    delayMachineStart: boolean = false,
-  ): string {
-    // cannot set state if state is set.
-    if (this.#state !== null) return this.getState();
-
-    this.setState(state);
-
-    if (delayMachineStart) {
-      return this;
-    }
-    this.start(startWithParams);
+  setInitialState(state: StateObject, startWithParams = {}): string {
+    if (this.#state !== null) return this;
+    this.#initialState = state;
     return this;
   }
 
@@ -113,7 +110,8 @@ class Machine {
     }, true);
   }
 
-  callStateMethod(method, params) {
+  callStateMethod(method: Function, params: any): Promise<*> {
+    // const parent = this;
     return new Promise((resolve, reject) => {
       const calling = method.call(this, params);
       if (
@@ -130,36 +128,49 @@ class Machine {
 
   // eslint-disable-next-line
   transition(edge: Edge, params: any): Machine {
-    const parent = this;
-    return new Promise(async function asyncFunction(resolve) {
+    return new Promise(async (resolve, reject) => {
       // set next state
-      parent.log(`Setting Next State ::> ${edge.getTo()}`);
-      parent.setNextState(edge.getTo());
+      this.log(`Setting Next State ::> ${edge.getTo().toString()}`);
+      this.setNextState(edge.getTo());
 
       // run [current state].[onExit]
-      if (parent.#state.onExit) {
-        parent.log(`Firing 'onExit' of ${parent.#state.toString()}`);
-        await parent.callStateMethod(parent.#state.onExit, params);
+      if (this.#state.onExit) {
+        this.log(`Firing 'onExit' of ${this.#state.toString()}`);
+        await this.callStateMethod(this.#state.onExit, params);
       }
 
       // run [nextState].[onEntry]
-      if (edge.getTo().onEntry) {
-        parent.log(`Firing 'onEntry' of ${edge.getTo().toString()}`);
-        await parent.callStateMethod(edge.getTo().onEntry, params);
+      if (this.#nextState.onEntry) {
+        this.log(`Firing 'onEntry' of ${this.#nextState.toString()}`);
+        try {
+          await this.callStateMethod(this.#nextState.onEntry, params);
+        } catch (err) {
+          return reject(err);
+        }
       }
 
-      // finally, set the new state
-      parent.log(`Setting State ::> ${parent.#nextState}`);
-      const response = parent.setState(parent.#nextState);
+      // set the new state
+      this.log(`Setting State ::> ${this.#nextState.toString()}`);
+      const response = this.setState(this.#nextState);
 
-      if (
-        parent.#state.toString() === parent.#nextState.toString() &&
-        parent.#state.onSuccess
-      ) {
-        parent.log(`Firing on Success of ::> ${parent.#nextState}`);
-        await parent.callStateMethod(parent.#state.onSuccess, params);
+      if (this.#state.toString() !== this.#nextState.toString()) {
+        // unable to transition
+        return reject('State Change Failed');
       }
-      resolve(response);
+
+      // reset next state
+      this.setNextState(null);
+
+      if (this.#state.onSuccess) {
+        this.log(`Firing on Success of ::> ${this.#state.toString()}`);
+        try {
+          await this.callStateMethod(this.#state.onSuccess, params);
+        } catch (err) {
+          return reject(err);
+        }
+      }
+
+      return resolve(response);
     });
   }
 
@@ -218,35 +229,37 @@ class Machine {
 
   // eslint-disable-next-line
   start(params: void | any): ResponseShape {
-    const parent = this;
-    return new Promise(async function(resolve, reject) {
-      if (parent.#state) {
-        parent.log(`Starting State Machine with ${parent.#state.toString()}`);
-        if (parent.#state.onEntry) {
-          parent.log(
-            `Running State ::> ${parent.#state.toString()} <:: 'onEntry'`,
-          );
-          await parent.callStateMethod(parent.#state.onEntry, params);
+    return new Promise(async (resolve, reject) => {
+      if (this.#initialState) {
+        this.setState(this.#initialState);
+        this.log(`Starting State Machine with ${this.#state.toString()}`);
+        if (this.#state.onEntry) {
+          this.log(`Running State ::> ${this.#state.toString()} <:: 'onEntry'`);
+          await this.callStateMethod(this.#state.onEntry, params);
         }
-        if (parent.#state.onSuccess) {
-          parent.log(
-            `Running State ::> ${parent.#state.toString()} <:: 'onSuccess'`,
+        if (this.#state.onSuccess) {
+          this.log(
+            `Running State ::> ${this.#state.toString()} <:: 'onSuccess'`,
           );
-          await parent.callStateMethod(parent.#state.onSuccess, params);
+          await this.callStateMethod(this.#state.onSuccess, params);
         }
-
-        resolve(parent.response());
+        resolve(this.response());
       } else {
-        reject();
+        reject('Inital State not found');
       }
     });
+  }
+
+  reset() {
+    this.setState(null);
+    return this.response();
   }
 
   response(params: any): ResponseShape {
     return {
       current_state: this.getState(),
       available_transitions: this.getTransitions(),
-      data: this.getData(params),
+      data: this.getData(),
     };
   }
 }
