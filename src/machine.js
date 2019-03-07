@@ -64,6 +64,7 @@ class Machine {
   }
 
   getState(): StateObject {
+    if (!this.#state) return null;
     return this.#state.toString();
   }
 
