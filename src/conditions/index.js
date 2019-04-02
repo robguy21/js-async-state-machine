@@ -1,9 +1,9 @@
-import andCondition from './andCondition';
-import orCondition from './orCondition';
-import notCondition from './notCondition';
+import and from './andCondition';
+import or from './orCondition';
+import not from './notCondition';
 
 export default {
-  andCondition,
-  orCondition,
-  notCondition,
+  and,
+  or,
+  not,
 };
