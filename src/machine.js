@@ -44,12 +44,16 @@ class Machine {
   }
 
   getEdgeFromTransition(transition: TransitionObject): Edge {
+    if (!this.#state) {
+      throw new Error(`${this.#state} - Invalid State - unable get Edges for Transistion`);
+    }
+
     const edges = this.#edges.filter(edge =>
-      edge.verifyEdge(transition.toString(), this.#state.toString()),
+      edge.verifyEdge(transition, this.getState()),
     );
 
-    if (edges.length > 1) {
-      throw new Error('Invalid number of edges found');
+    if (edges.length > 1 || edges.length === 0) {
+      throw new Error(`Invalid number of edges found - ${edges.length}`);
     }
     return edges[0];
   }
@@ -59,7 +63,7 @@ class Machine {
     if (!this.#state) return [];
 
     return this.#edges
-      .filter(edge => edge.canTransitionFrom(this.#state.toString()))
+      .filter(edge => edge.canTransitionFrom(this.getState()))
       .map(edge => edge.getTransition().toString());
   }
 
@@ -194,17 +198,24 @@ class Machine {
     return new Promise((resolve, reject) => {
       let transition = withTransition;
       if (typeof transition !== 'string') {
+        if(!transition || !transition.toString){
+          throw new Error(`Machine - invalid transition - ${transition}`);
+        }
         transition = withTransition.toString();
       }
 
-      const edge = this.getEdgeFromTransition(transition);
+      let edge;
+      try {
+        edge = this.getEdgeFromTransition(transition);
+      } catch (e) {
+        if (!edge) resolve(this.response());
+      }
 
       this.log(
         `Transition ${transition} ::> has matching edge -> ${
           edge ? 'Yes' : 'No'
         }`,
       );
-      if (!edge) resolve(this.response());
       if (this.runConditions(edge.getTransition().conditions, params)) {
         this.log(`Transition ${transition} ::> conditions passed`);
 

@@ -62,9 +62,9 @@ class Edge {
     return this.#fromStates.some(fromState => fromState.toString() === state);
   }
 
-  verifyEdge(transition: string, state: string) {
+  verifyEdge(transition: TransitionObject, state: string) {
     return (
-      this.#withTransition.toString() === transition &&
+      this.#withTransition.toString() === transition.toString() &&
       this.#fromStates.some(currentFrom => currentFrom.toString() === state)
     );
   }

@@ -1,5 +1,4 @@
 import test from 'tape-async';
-
 import Machine from '../src/index.js';
 import State from '../src/state.js';
 import Transition from '../src//transition.js';
@@ -9,9 +8,7 @@ const Edge = new EdgeBuilder();
 
 // State Declarations
 const OffState = Object.create(State).setName('off');
-
 const OnState = Object.create(State).setName('on');
-
 const NuclearState = Object.create(State).setName('init_nuclear_mode');
 
 // Transition Declarations
@@ -224,6 +221,34 @@ test('Machine should trigger with many froms', async t => {
   const sm = await Microwave.triggerTransition(force_on);
   t.equals(sm.current_state.toString(), 'on');
   t.end();
+});
+
+test('Machine should throw if transition is invalid', async t => {
+  const Microwave = new Machine()
+  .registerEdge(
+    Edge.new()
+      .from([OffState])
+      .to(OnState)
+      .transition(switch_on),
+  )
+  .registerEdge(
+    Edge.new()
+      .from([OnState])
+      .to(OffState)
+      .transition(switch_off),
+  )
+  .setInitialState(OffState);
+
+  Microwave.start();
+    let transition;
+  try {
+    const sm = await Microwave.triggerTransition(transition);
+    // console.log(sm);
+    t.fail();
+  } catch (e) {
+    t.equals(e.message, `Machine - invalid transition - ${transition}`);
+    t.end();
+  }
 });
 
 
