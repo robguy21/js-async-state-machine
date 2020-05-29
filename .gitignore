@@ -2,3 +2,7 @@ yarn-error.log
 node_modules/
 lib/
 .DS_STORE
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+.pnp.*
